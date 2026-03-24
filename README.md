@@ -1,4 +1,4 @@
-# Ordenacao por Comparacao 1
+# Ordenacao por Comparacao
 
 Implementacao em Python dos algoritmos `Insertion Sort` e `Selection Sort`.
 
