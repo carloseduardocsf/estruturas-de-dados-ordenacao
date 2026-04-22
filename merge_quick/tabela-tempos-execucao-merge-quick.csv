@@ -1,0 +1,25 @@
+instancia,algoritmo,tempo_execucao_segundos
+num.1000.1.in,Merge Sort,0.001210
+num.1000.1.in,Quick Sort,0.000694
+num.1000.2.in,Merge Sort,0.001241
+num.1000.2.in,Quick Sort,0.000775
+num.1000.3.in,Merge Sort,0.001230
+num.1000.3.in,Quick Sort,0.000674
+num.1000.4.in,Merge Sort,0.001285
+num.1000.4.in,Quick Sort,0.000763
+num.10000.1.in,Merge Sort,0.015706
+num.10000.1.in,Quick Sort,0.014581
+num.10000.2.in,Merge Sort,0.019646
+num.10000.2.in,Quick Sort,0.014978
+num.10000.3.in,Merge Sort,0.015017
+num.10000.3.in,Quick Sort,0.014976
+num.10000.4.in,Merge Sort,0.016293
+num.10000.4.in,Quick Sort,0.015687
+num.100000.1.in,Merge Sort,0.175251
+num.100000.1.in,Quick Sort,0.824211
+num.100000.2.in,Merge Sort,0.177546
+num.100000.2.in,Quick Sort,0.786144
+num.100000.3.in,Merge Sort,0.178144
+num.100000.3.in,Quick Sort,0.780434
+num.100000.4.in,Merge Sort,0.188511
+num.100000.4.in,Quick Sort,0.790452

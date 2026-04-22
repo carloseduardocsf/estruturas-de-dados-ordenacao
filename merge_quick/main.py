@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import argparse
+import csv
 import sys
 from pathlib import Path
 from time import perf_counter
@@ -9,25 +11,46 @@ from quick_sort import quick_sort
 
 
 PROJECT_DIR = Path(__file__).resolve().parent
+INSTANCES_DIR = PROJECT_DIR / "instancias-num"
 RESULTS_DIR = PROJECT_DIR / "results"
 
 
-def read_file(file_path: str | Path) -> list[int]:
-    path = Path(file_path)
+def run_merge_sort(values: list[int]) -> list[int]:
+    result = list(values)
+    merge_sort(result, 0, len(result) - 1)
+    return result
+
+
+def run_quick_sort(values: list[int]) -> list[int]:
+    result = list(values)
+    # O Quick Sort recursivo pode exigir mais profundidade em particoes ruins.
+    sys.setrecursionlimit(max(1000, len(result) * 2 + 10))
+    quick_sort(result, 0, len(result) - 1)
+    return result
+
+
+ALGORITHMS = (
+    ("Merge Sort", run_merge_sort),
+    ("Quick Sort", run_quick_sort),
+)
+
+
+def read_instance(path: Path) -> list[int]:
     lines = path.read_text(encoding="utf-8").splitlines()
-
-    if not lines:
-        raise ValueError("o arquivo de entrada esta vazio")
-
-    # A primeira linha contem apenas a quantidade de elementos.
-    return [int(line.strip()) for line in lines[1:] if line.strip()]
+    size = int(lines[0].strip())
+    return [int(lines[index].strip()) for index in range(1, size + 1)]
 
 
-def measure_time(sort_function, arr: list[int], *args) -> float:
-    start_time = perf_counter()
-    sort_function(arr, *args)
-    end_time = perf_counter()
-    return end_time - start_time
+def instance_sort_key(path: Path) -> tuple[int, int]:
+    parts = path.stem.split(".")
+    return int(parts[1]), int(parts[2])
+
+
+def measure_algorithm(instance_name: str, values: list[int], algorithm_name: str, algorithm) -> tuple[str, str, float]:
+    start = perf_counter()
+    ordered_values = algorithm(values)
+    elapsed_seconds = perf_counter() - start
+    return instance_name, algorithm_name, elapsed_seconds, ordered_values
 
 
 def save_instance(path: Path, values: list[int]) -> None:
@@ -39,42 +62,81 @@ def save_instance(path: Path, values: list[int]) -> None:
             file.write(f"{value}\n")
 
 
+def run_single_instance(path: Path) -> None:
+    values = read_instance(path)
+    ordered_values = None
+    print(f"Instancia: {path.name}")
+
+    for algorithm_name, algorithm in ALGORITHMS:
+        _, algorithm_name, elapsed_seconds, current_values = measure_algorithm(
+            path.name,
+            values,
+            algorithm_name,
+            algorithm,
+        )
+        if ordered_values is None:
+            ordered_values = current_values
+        print(f"{algorithm_name}: {elapsed_seconds:.6f}s")
+
+    save_instance(RESULTS_DIR / path.name, ordered_values)
+
+
+def generate_table(instances_dir: Path, table_path: Path) -> None:
+    instance_files = sorted(instances_dir.glob("*.in"), key=instance_sort_key)
+    table_path.parent.mkdir(parents=True, exist_ok=True)
+    total_lines = len(instance_files) * len(ALGORITHMS) + 1
+    current_line = 2
+
+    with table_path.open("w", encoding="utf-8", newline="") as csv_file:
+        writer = csv.writer(csv_file)
+        writer.writerow(["instancia", "algoritmo", "tempo_execucao_segundos"])
+        csv_file.flush()
+
+        for instance_path in instance_files:
+            values = read_instance(instance_path)
+            ordered_values = None
+
+            for algorithm_name, algorithm in ALGORITHMS:
+                print(f"Linha {current_line}/{total_lines}: {instance_path.name} - {algorithm_name}")
+                instance_name, algorithm_name, elapsed_seconds, current_values = measure_algorithm(
+                    instance_path.name,
+                    values,
+                    algorithm_name,
+                    algorithm,
+                )
+                if ordered_values is None:
+                    ordered_values = current_values
+                writer.writerow([instance_name, algorithm_name, f"{elapsed_seconds:.6f}"])
+                csv_file.flush()
+                current_line += 1
+
+            save_instance(RESULTS_DIR / instance_path.name, ordered_values)
+
+    print(f"Tabela salva em: {table_path}")
+
+
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser()
+    subparsers = parser.add_subparsers(dest="command", required=True)
+
+    instance_parser = subparsers.add_parser("instancia")
+    instance_parser.add_argument("arquivo", type=Path)
+
+    table_parser = subparsers.add_parser("tabela")
+    table_parser.add_argument("--saida", type=Path, required=True)
+
+    return parser
+
+
 def main() -> int:
-    if len(sys.argv) != 2:
-        program_name = Path(sys.argv[0]).name or "merge_quick.py"
-        print(f"Uso: python {program_name} <arquivo_de_entrada>")
-        return 1
+    args = build_parser().parse_args()
 
-    file_path = Path(sys.argv[1])
-
-    try:
-        values = read_file(file_path)
-    except FileNotFoundError:
-        print(f"Arquivo nao encontrado: {file_path}")
-        return 1
-    except ValueError as error:
-        print(f"Erro ao ler arquivo: {error}")
-        return 1
-
-    merge_values = list(values)
-    quick_values = list(values)
-
-    merge_time = measure_time(merge_sort, merge_values, 0, len(merge_values) - 1)
-
-    # O Quick Sort recursivo pode exigir mais profundidade em particoes ruins.
-    sys.setrecursionlimit(max(1000, len(quick_values) * 2 + 10))
-    quick_time = measure_time(quick_sort, quick_values, 0, len(quick_values) - 1)
-
-    output_path = RESULTS_DIR / file_path.name
-    save_instance(output_path, merge_values)
-
-    print(f"Arquivo analisado: {file_path.name}")
-    print(f"Quantidade de elementos: {len(values)}")
-    print(f"Tempo do Merge Sort: {merge_time:.6f} segundos")
-    print(f"Tempo do Quick Sort: {quick_time:.6f} segundos")
-    print(f"Arquivo ordenado salvo em: {output_path}")
-
-    return 0
+    if args.command == "instancia":
+        run_single_instance(args.arquivo)
+        return 0
+    else:
+        generate_table(INSTANCES_DIR, args.saida)
+        return 0
 
 
 if __name__ == "__main__":
